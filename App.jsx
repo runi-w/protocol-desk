@@ -2491,6 +2491,11 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
     } catch (e) { alert("Couldn't send back — " + (e.message || e)); }
     finally { setBusyId(""); }
   };
+  const removeSub = async (s) => {
+    if (!window.confirm("Permanently delete this submission? This can't be undone.")) return;
+    setSubs(list => list.filter(x => x.id !== s.id));
+    try { await aiCall("/submissions/delete", { id: s.id }); } catch (e) { alert("Couldn't delete — " + (e.message || e)); load(); }
+  };
   const reject = async (s) => {
     if (!window.confirm("Reject this submission? The agent will see it wasn't used.")) return;
     setBusyId(s.id);
@@ -2597,6 +2602,11 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
                       <p style={{ margin:"0 0 6px", fontSize:"13px", color:D.muted, whiteSpace:"pre-wrap" }}>{s.question}</p>
                       {s.approvedAnswer && <p style={{ margin:0, fontSize:"13.5px", color:D.text, lineHeight:1.7, whiteSpace:"pre-wrap", fontFamily:"Georgia, 'Times New Roman', serif" }}>{s.approvedAnswer}</p>}
                       <ThreadLog thread={s.thread} />
+                      {s.status !== "returned" && (
+                        <div style={{ textAlign:"right", marginTop:"8px" }}>
+                          <button onClick={() => removeSub(s)} style={{ background:"none", border:"none", color:D.muted, fontSize:"12px", fontWeight:600, cursor:"pointer", fontFamily:FONT, textDecoration:"underline" }}>Delete</button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
