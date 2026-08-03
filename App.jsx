@@ -2283,7 +2283,7 @@ const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogo
   const reviseVal = (s) => revText[s.id] !== undefined ? revText[s.id] : (latestReturn(s).suggestion || s.currentAnswer || s.draft || "");
   const sendRevision = async (s) => {
     const answer = (reviseVal(s) || "").trim();
-    if (!answer || revBusy) return;
+    if (!answer || revBusy === s.id) return;
     setRevBusy(s.id);
     try {
       await aiCall("/submissions/revise", { id: s.id, answer });
@@ -2293,7 +2293,7 @@ const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogo
     finally { setRevBusy(""); }
   };
   const redraftRevision = async (s) => {
-    if (revAiBusy) return;
+    if (revAiBusy === s.id) return;
     setRevAiBusy(s.id);
     try { const { response } = await aiCall("/ai/write", { message: s.question, approvedAnswer: "" }); setRevText(r => ({ ...r, [s.id]: response || "" })); }
     catch (e) { alert("The AI is busy — try again in a moment.\n" + (e.message || e)); }
@@ -2301,7 +2301,7 @@ const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogo
   };
   // Rewrite the approved answer in a fresh way, staying faithful to what Runi approved.
   const regenerate = async (s) => {
-    if (regenBusy) return;
+    if (regenBusy === s.id) return;
     setRegenBusy(s.id);
     try {
       const { response } = await aiCall("/ai/write", { message: s.question, approvedAnswer: s.approvedAnswer });
@@ -2428,6 +2428,8 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
   const [subs, setSubs] = useState([]);
   const [showResolved, setShowResolved] = useState(false);
   const [edits, setEdits] = useState({});
+  // Key the edit buffer by id + updatedAt so a revised submission re-seeds instead of showing stale text.
+  const ek = (s) => s.id + ":" + (s.updatedAt || 0);
   const [notes, setNotes] = useState({});     // feedback to the agent
   const [clar, setClar]   = useState({});     // Runi's explanation of flagged contradictions
   const [contra, setContra] = useState({});   // { [id]: { busy, list, summary, ran } }
@@ -2436,7 +2438,7 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
   const [loading, setLoading] = useState(true);
 
   const checkContradictions = async (s) => {
-    const finalAnswer = (edits[s.id] || "").trim();
+    const finalAnswer = (edits[ek(s)] || "").trim();
     if (!finalAnswer) { alert("Write the final answer first, then check it."); return; }
     setContra(c => ({ ...c, [s.id]: { busy: true, list: [], summary: "", ran: false } }));
     try {
@@ -2455,13 +2457,13 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
       const r = await aiCall("/submissions" + (showResolved ? "" : "?status=pending"), null, "GET");
       const list = r.submissions || [];
       setSubs(list);
-      setEdits(prev => { const e = { ...prev }; list.forEach(s => { if (e[s.id] === undefined) e[s.id] = s.approvedAnswer || s.currentAnswer || s.draft || ""; }); return e; });
+      setEdits(prev => { const e = { ...prev }; list.forEach(s => { const k = s.id + ":" + (s.updatedAt || 0); if (e[k] === undefined) e[k] = s.approvedAnswer || s.currentAnswer || s.draft || ""; }); return e; });
     } catch {} finally { setLoading(false); }
   };
   useEffect(() => { load(); }, [showResolved]);
 
   const approve = async (s) => {
-    const finalAnswer = (edits[s.id] || "").trim();
+    const finalAnswer = (edits[ek(s)] || "").trim();
     if (!finalAnswer) { alert("Add the final answer before approving."); return; }
     setBusyId(s.id);
     try {
@@ -2479,7 +2481,7 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
   const returnBack = async (s) => {
     const feedback = (notes[s.id] || "").trim();
     if (!feedback) { alert("Add feedback telling the agent what to change, then send it back."); return; }
-    const edited = (edits[s.id] || "").trim();
+    const edited = (edits[ek(s)] || "").trim();
     const original = (s.currentAnswer || s.draft || "").trim();
     const suggestion = edited && edited !== original ? edited : "";   // only send a rewrite if Runi actually changed it
     setBusyId(s.id);
@@ -2536,7 +2538,7 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
                 )}
                 <ThreadLog thread={s.thread} />
                 <p style={{ margin:"14px 0 5px", ...labelStyle, color:D.success }}>Answer — edit &amp; approve, or leave it and send back with feedback</p>
-                <textarea value={edits[s.id] || ""} onChange={e => setEdits({ ...edits, [s.id]: e.target.value })} rows={7} style={box} />
+                <textarea value={edits[ek(s)] || ""} onChange={e => setEdits({ ...edits, [ek(s)]: e.target.value })} rows={7} style={box} />
 
                 <p style={{ margin:"14px 0 5px", ...labelStyle }}>Feedback to the agent <span style={{ textTransform:"none", fontWeight:600, letterSpacing:0 }}>(teaches the AI on approve · required to send back)</span></p>
                 <textarea value={notes[s.id] || ""} onChange={e => setNotes({ ...notes, [s.id]: e.target.value })} rows={2}
