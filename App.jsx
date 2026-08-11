@@ -2780,6 +2780,9 @@ const AgentsView = ({ onClose }) => {
   const [emailEdits, setEmailEdits] = useState({});
   const [nameEdits, setNameEdits] = useState({});
   const [savedU, setSavedU] = useState("");
+  const [pwOpen, setPwOpen] = useState("");   // username whose reset field is open
+  const [pwVal, setPwVal] = useState("");
+  const [pwDone, setPwDone] = useState("");
 
   const load = async () => {
     try { const r = await aiCall("/agents", null, "GET"); setAgents(r.agents || []); }
@@ -2809,6 +2812,15 @@ const AgentsView = ({ onClose }) => {
       setNameEdits(e => { const c = { ...e }; delete c[u]; return c; });
       await load();
     } catch (e) { alert("Couldn't save — " + (e.message || e)); }
+  };
+  const resetPasscode = async (u) => {
+    const p = pwVal.trim();
+    if (!p) return;
+    try {
+      await aiCall("/agents/update", { username: u, passcode: p });
+      setPwDone(u); setTimeout(() => setPwDone(""), 2600);
+      setPwOpen(""); setPwVal("");
+    } catch (e) { alert("Couldn't reset — " + (e.message || e)); }
   };
   const del = async (u) => {
     if (!window.confirm("Remove " + u + "'s login? They won't be able to sign in.")) return;
@@ -2886,6 +2898,27 @@ const AgentsView = ({ onClose }) => {
                       borderRadius:"9px", fontSize:"12.5px", fontWeight:700, cursor:"pointer", fontFamily:FONT }}>
                     {savedU === a.username ? "✓ Saved" : "Save"}
                   </button>
+                </div>
+                {/* Reset passcode — passwords are hashed and can't be shown, so this SETS a new one. */}
+                <div style={{ marginTop:"9px", display:"flex", gap:"8px", alignItems:"center", flexWrap:"wrap" }}>
+                  {pwOpen === a.username ? (
+                    <>
+                      <input autoFocus placeholder="New passcode" value={pwVal}
+                        onChange={e => setPwVal(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") resetPasscode(a.username); if (e.key === "Escape") { setPwOpen(""); setPwVal(""); } }}
+                        style={{ ...inputStyle, flex:"1 1 180px", padding:"8px 11px", fontSize:"12.5px" }} />
+                      <button onClick={() => resetPasscode(a.username)} disabled={!pwVal.trim()}
+                        style={{ padding:"8px 14px", background: pwVal.trim() ? D.accent : D.surfaceSoft, color: pwVal.trim() ? "#fff" : D.muted, border:"none", borderRadius:"9px", fontSize:"12.5px", fontWeight:700, cursor: pwVal.trim() ? "pointer" : "default", fontFamily:FONT }}>Set new passcode</button>
+                      <button onClick={() => { setPwOpen(""); setPwVal(""); }} style={{ background:"none", border:"none", color:D.muted, fontSize:"12px", fontWeight:600, cursor:"pointer", fontFamily:FONT }}>Cancel</button>
+                    </>
+                  ) : pwDone === a.username ? (
+                    <span style={{ fontSize:"12.5px", fontWeight:700, color:D.success }}>✓ Passcode reset — give the new one to {a.fullName || a.username}.</span>
+                  ) : (
+                    <button onClick={() => { setPwOpen(a.username); setPwVal(""); }}
+                      style={{ background:"none", border:"none", color:D.accentDark, fontSize:"12.5px", fontWeight:600, cursor:"pointer", fontFamily:FONT, textDecoration:"underline", padding:0 }}>
+                      🔑 Reset passcode
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
