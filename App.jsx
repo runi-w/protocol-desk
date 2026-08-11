@@ -481,27 +481,37 @@ const RAW_TEMPLATES = [
 
 
 // ─── DESIGN TOKENS ───────────────────────────────────────────────
-const D = {
-  background:  "#F7F4EF",
-  surface:     "#FFFFFF",
-  surfaceSoft: "#FBFAF7",
-  text:        "#171717",
-  muted:       "#7A746D",
-  border:      "#E7DED2",
-  accent:      "#B89563",
-  accentDark:  "#6F5533",
-  danger:      "#B42318",
-  dangerBg:    "#FFF4F2",
-  success:     "#3F7D5A",
-  successBg:   "#F1F7F3",
+// EMBED = loaded as ?embed=1 inside the CRM. Defined here so the palette + fonts can switch below.
+const EMBED = (() => { try { return new URLSearchParams(window.location.search).get("embed") === "1"; } catch { return false; } })();
+// Only these parent origins may grant staff via the embed handshake (our own gcclothiers.net sites + local dev).
+const EMBED_ORIGIN_OK = (o) => /^https:\/\/([a-z0-9-]+\.)?gcclothiers\.net$/.test(o) || /^https?:\/\/localhost(:\d+)?$/.test(o);
+
+// Standalone brand palette (cream + gold serif).
+const GOLD = {
+  background:  "#F7F4EF", surface: "#FFFFFF", surfaceSoft: "#FBFAF7",
+  text: "#171717", muted: "#7A746D", border: "#E7DED2",
+  accent: "#B89563", accentDark: "#6F5533",
+  danger: "#B42318", dangerBg: "#FFF4F2", success: "#3F7D5A", successBg: "#F1F7F3",
 };
-const FONT = "-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', Arial, sans-serif";
+// CRM (gage-court-hub) light theme — slate tokens converted from its oklch values, so the embed matches.
+const CRM_LIGHT = {
+  background:  "#F8FAFC", surface: "#FFFFFF", surfaceSoft: "#F1F5F9",
+  text: "#121821", muted: "#5D6A7C", border: "#DFE3EA",
+  accent: "#1B293F", accentDark: "#1B293F",       // CRM primary (dark slate) drives buttons/active
+  danger: "#CC272E", dangerBg: "#FBE9EA", success: "#2F7D57", successBg: "#E9F3EE",
+};
+const D = EMBED ? CRM_LIGHT : GOLD;
+const FONT = EMBED
+  ? "'Public Sans', ui-sans-serif, system-ui, -apple-system, sans-serif"
+  : "-apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', Arial, sans-serif";
+// Serif for headings/replies: the CRM's Instrument Serif in embed, else the desk's own serif.
+const SERIF = EMBED ? "'Instrument Serif', ui-serif, Georgia, serif" : "Georgia, 'Times New Roman', serif";
 
 // ─── Brand stylesheet (injected once into <head>) ────────────────
 // The app is otherwise inline-styled, which can't express breakpoints. These classes carry the
 // mobile / tablet / desktop layouts for the home screen.
 const GC_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Public+Sans:wght@400;500;600;700&display=swap');
 :root{
   --gc-bg:#F2EEE7; --gc-surface:#FBF9F5; --gc-card:#FFFFFF; --gc-text:#171717; --gc-muted:#7A746D;
   --gc-border:#E7DED2; --gc-accent:#B8945F; --gc-accent-dark:#6F5533;
@@ -633,6 +643,18 @@ const GC_CSS = `
 .gc-embed .gc-rule{margin:14px 0 20px;}
 .gc-embed .gc-hero{padding:20px 22px 28px;}
 .gc-embed .gc-help{margin-top:14px;}
+.gc-embed .gc-crest{display:none;}   /* drop the gold heraldic watermark in the slate theme */
+/* Match the CRM's slate theme + fonts (the .gc-* classes read these vars; inline styles read the D object, both switched for embed) */
+.gc-embed{
+  --gc-bg:#F8FAFC; --gc-surface:#FFFFFF; --gc-surfaceSoft:#F1F5F9; --gc-text:#121821;
+  --gc-muted:#5D6A7C; --gc-border:#DFE3EA; --gc-accent:#1B293F; --gc-accent-dark:#1B293F;
+  --gc-serif:'Instrument Serif', ui-serif, Georgia, serif;
+  --gc-sans:'Public Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+.gc-embed .gc-h1{font-weight:400;}   /* Instrument Serif reads better at its regular weight */
+.gc-embed .gc-tab{border-radius:8px;}
+.gc-embed .gc-btn{border-radius:8px;}
+.gc-embed .gc-search input{border-radius:8px;}
 `;
 
 // ─── CATEGORY CONFIG ─────────────────────────────────────────────
@@ -695,11 +717,6 @@ const STAFF_PASSCODE = "Gc1505123!";
 // Set this to the Railway URL once deployed, e.g. "https://protocol-desk-ai-production.up.railway.app".
 const AI_BACKEND_URL = "https://protocol-desk-ai-production.up.railway.app";
 const TEMPLATES_LIVE = true;   // Templates content approved & live (2026-07-19)
-// EMBED mode: when loaded as ?embed=1 inside the CRM, trim our own chrome and accept single sign-on
-// from the parent (a postMessage handshake, origin-verified) so there's no second passcode.
-const EMBED = (() => { try { return new URLSearchParams(window.location.search).get("embed") === "1"; } catch { return false; } })();
-// Only these parent origins may grant staff via the embed handshake (our own gcclothiers.net sites + local dev).
-const EMBED_ORIGIN_OK = (o) => /^https:\/\/([a-z0-9-]+\.)?gcclothiers\.net$/.test(o) || /^https?:\/\/localhost(:\d+)?$/.test(o);
 // Session credentials sent with backend calls (set by the app on login / staff unlock).
 const SESSION = { staff: false, agentUser: "", agentPass: "" };
 const aiCall = async (path, body, method = "POST") => {
@@ -1371,7 +1388,7 @@ const ProtocolForm = ({ initial, onSave, onCancel, isNew: isNewProp }) => {
         <DetailSection title="What to Say to the Customer" icon="💬" color={D.success}>
           <textarea value={f.approvedLanguage} onChange={e => upd("approvedLanguage", e.target.value)} rows={7}
             placeholder={"Type the response however you like — even rough notes.\n\nThen tap “Format with AI” to turn it into an on-brand, ready-to-copy script.\n\nOr write it yourself with labeled variants:\n\nNo deadline:\n\"...\"\n\nHas a deadline:\n\"...\""}
-            style={{ ...inputStyle, resize:"vertical", fontFamily:"Georgia, 'Times New Roman', serif", lineHeight:1.8 }} />
+            style={{ ...inputStyle, resize:"vertical", fontFamily:SERIF, lineHeight:1.8 }} />
           {AI_BACKEND_URL && (
             <button type="button" onClick={formatWithAI} disabled={aiBusy}
               style={{ marginTop:"10px", display:"inline-flex", alignItems:"center", gap:"7px", padding:"9px 16px",
@@ -1696,7 +1713,7 @@ const Detail = ({ p, onBack, onEdit, staff }) => {
                       </div>
                     )}
                     <p style={{ margin:"0 0 12px", fontSize:"14px", lineHeight:1.85, color:"#14532d",
-                      fontFamily:"Georgia, 'Times New Roman', serif", whiteSpace:"pre-wrap" }}>{r.body}</p>
+                      fontFamily:SERIF, whiteSpace:"pre-wrap" }}>{r.body}</p>
                     <div style={{ display:"flex", justifyContent:"flex-end" }}>
                       <CopyButton text={r.body} label="Copy this" small />
                     </div>
@@ -1948,7 +1965,7 @@ const AnswerQuestionView = ({ q, protocols = [], onSaved, onClose }) => {
           <p style={{ margin:"0 0 5px", ...labelStyle, color:D.success }}>Your answer — what the agent sends</p>
           <textarea value={answer} onChange={e => setAnswer(e.target.value)} rows={8}
             placeholder="Write the reply the agent should send — or tap “Draft with AI” for a starting point, then edit it."
-            style={{ ...box, fontFamily:"Georgia, 'Times New Roman', serif" }} />
+            style={{ ...box, fontFamily:SERIF }} />
           <button onClick={draftWithAI} disabled={aiBusy}
             style={{ marginTop:"10px", padding:"10px 18px", background:D.surface, color:D.accentDark, border:`1.5px solid ${D.accent}`, borderRadius:"10px", fontSize:"13.5px", fontWeight:700, cursor: aiBusy ? "default" : "pointer", fontFamily:FONT }}>
             {aiBusy ? "Drafting…" : "✨ Draft with AI"}
@@ -2133,7 +2150,7 @@ const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSu
               </div>
               <div style={{ padding:"14px 18px" }}>
                 <textarea value={draft} onChange={e => { setDraft(e.target.value); setLogged(false); }} rows={9}
-                  style={{ ...box, background:D.surface, fontFamily:"Georgia, 'Times New Roman', serif", lineHeight:1.85 }} />
+                  style={{ ...box, background:D.surface, fontFamily:SERIF, lineHeight:1.85 }} />
                 <p style={{ margin:"8px 2px 12px", fontSize:"11.5px", color:D.muted }}>Read it against the message above, tweak anything you like, then copy.</p>
                 <button onClick={copyReply}
                   style={{ display:"flex", alignItems:"center", gap:"7px", padding:"11px 20px",
@@ -2374,7 +2391,7 @@ const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogo
           </div>
 
           <p style={{ margin:"16px 0 7px", ...labelStyle }}>Your proposed answer <span style={{ textTransform:"none", fontWeight:600, letterSpacing:0, color:D.danger }}>· required</span></p>
-          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={7} placeholder="Write the reply you'd send — or tap “Draft with AI” to get a starting point, then edit it." style={{ ...box, fontFamily:"Georgia, 'Times New Roman', serif", lineHeight:1.85 }} />
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={7} placeholder="Write the reply you'd send — or tap “Draft with AI” to get a starting point, then edit it." style={{ ...box, fontFamily:SERIF, lineHeight:1.85 }} />
           {(() => { const ready = question.trim() && draft.trim(); return (
           <>
           <div style={{ display:"flex", gap:"10px", marginTop:"10px", flexWrap:"wrap" }}>
@@ -2406,7 +2423,7 @@ const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogo
                       <p style={{ margin:"0 0 4px", fontSize:"10.5px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:"#B45309" }}>Runi asked you to rewrite this</p>
                       <p style={{ margin:"0 0 10px", fontSize:"13px", color:D.text, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{latestReturn(s).feedback}</p>
                       <p style={{ margin:"0 0 6px", ...labelStyle }}>Your revised answer</p>
-                      <textarea value={reviseVal(s)} onChange={e => setRevText(r => ({ ...r, [s.id]: e.target.value }))} rows={6} style={{ ...box, fontFamily:"Georgia, 'Times New Roman', serif" }} />
+                      <textarea value={reviseVal(s)} onChange={e => setRevText(r => ({ ...r, [s.id]: e.target.value }))} rows={6} style={{ ...box, fontFamily:SERIF }} />
                       <div style={{ display:"flex", gap:"8px", marginTop:"9px", flexWrap:"wrap" }}>
                         <button onClick={() => redraftRevision(s)} disabled={revAiBusy === s.id} style={{ padding:"9px 15px", background:D.surface, color:D.accentDark, border:`1.5px solid ${D.accent}`, borderRadius:"9px", fontSize:"12.5px", fontWeight:700, cursor: revAiBusy === s.id ? "default" : "pointer", fontFamily:FONT }}>{revAiBusy === s.id ? "Drafting…" : "✨ Redraft with AI"}</button>
                         <button onClick={() => sendRevision(s)} disabled={revBusy === s.id || !reviseVal(s).trim()} style={{ padding:"9px 17px", background: (revBusy === s.id || !reviseVal(s).trim()) ? D.surfaceSoft : D.accent, color: (revBusy === s.id || !reviseVal(s).trim()) ? D.muted : "#fff", border:"none", borderRadius:"9px", fontSize:"13px", fontWeight:700, cursor: (revBusy === s.id || !reviseVal(s).trim()) ? "default" : "pointer", fontFamily:FONT }}>{revBusy === s.id ? "Sending…" : "Resend to Runi"}</button>
@@ -2416,7 +2433,7 @@ const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogo
                   {s.status === "approved" && (
                     <div style={{ marginTop:"10px", background:D.successBg, border:`1px solid ${D.success}33`, borderRadius:"10px", padding:"11px 13px" }}>
                       <p style={{ margin:"0 0 6px", fontSize:"10.5px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:D.success }}>Approved answer — send this</p>
-                      <p style={{ margin:"0 0 9px", fontSize:"14px", color:D.text, lineHeight:1.8, whiteSpace:"pre-wrap", fontFamily:"Georgia, 'Times New Roman', serif" }}>{regen[s.id] || s.approvedAnswer}</p>
+                      <p style={{ margin:"0 0 9px", fontSize:"14px", color:D.text, lineHeight:1.8, whiteSpace:"pre-wrap", fontFamily:SERIF }}>{regen[s.id] || s.approvedAnswer}</p>
                       {s.feedback && (
                         <div style={{ background:"#FBF3E6", border:"1px solid #e6d5b8", borderRadius:"8px", padding:"9px 11px", marginBottom:"9px" }}>
                           <p style={{ margin:"0 0 3px", fontSize:"10.5px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:D.accentDark }}>Feedback from Runi</p>
@@ -2534,7 +2551,7 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
     catch (e) { alert("Couldn't reject — " + (e.message || e)); }
     finally { setBusyId(""); }
   };
-  const box = { ...inputStyle, resize:"vertical", fontSize:"14px", lineHeight:1.8, fontFamily:"Georgia, 'Times New Roman', serif" };
+  const box = { ...inputStyle, resize:"vertical", fontSize:"14px", lineHeight:1.8, fontFamily:SERIF };
   const pending  = subs.filter(s => s.status === "pending");
   const waiting  = subs.filter(s => s.status === "returned");   // sent back — waiting on the agent
   const resolved = subs.filter(s => s.status === "approved" || s.status === "rejected");
@@ -2635,7 +2652,7 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
                         <span style={{ fontSize:"11.5px", fontWeight:800, padding:"2px 8px", borderRadius:"20px", color:st.color, background:st.bg }}>{st.label}</span>
                       </div>
                       <p style={{ margin:"0 0 6px", fontSize:"13px", color:D.muted, whiteSpace:"pre-wrap" }}>{s.question}</p>
-                      {s.approvedAnswer && <p style={{ margin:0, fontSize:"13.5px", color:D.text, lineHeight:1.7, whiteSpace:"pre-wrap", fontFamily:"Georgia, 'Times New Roman', serif" }}>{s.approvedAnswer}</p>}
+                      {s.approvedAnswer && <p style={{ margin:0, fontSize:"13.5px", color:D.text, lineHeight:1.7, whiteSpace:"pre-wrap", fontFamily:SERIF }}>{s.approvedAnswer}</p>}
                       <ThreadLog thread={s.thread} />
                       {s.status !== "returned" && (
                         <div style={{ textAlign:"right", marginTop:"8px" }}>
@@ -2687,7 +2704,7 @@ const LessonsView = ({ onClose }) => {
                   <button onClick={() => del(l.id)} style={{ background:"none", border:"none", color:D.danger, cursor:"pointer", fontSize:"12px", fontWeight:600, fontFamily:FONT }}>Remove</button>
                 </div>
                 <p style={{ margin:"0 0 9px", fontSize:"13.5px", color:D.text, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{l.question}</p>
-                <p style={{ margin:0, fontSize:"14px", color:D.text, lineHeight:1.8, whiteSpace:"pre-wrap", fontFamily:"Georgia, 'Times New Roman', serif", background:D.successBg, border:`1px solid ${D.success}33`, borderRadius:"9px", padding:"11px 13px" }}>{l.answer}</p>
+                <p style={{ margin:0, fontSize:"14px", color:D.text, lineHeight:1.8, whiteSpace:"pre-wrap", fontFamily:SERIF, background:D.successBg, border:`1px solid ${D.success}33`, borderRadius:"9px", padding:"11px 13px" }}>{l.answer}</p>
                 {l.guidance && (
                   <div style={{ marginTop:"9px", background:"#FBF3E6", border:"1px solid #e6d5b8", borderRadius:"9px", padding:"10px 12px" }}>
                     <p style={{ margin:"0 0 3px", fontSize:"10.5px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:D.accentDark }}>Your guidance — the AI follows this rule</p>
@@ -2767,7 +2784,7 @@ const HistoryView = ({ onClose }) => {
                     <p style={{ margin:"0 0 10px", fontSize:"13px", color:D.text, lineHeight:1.6 }}>{h.situation || "—"}</p>
                     <p style={{ margin:"0 0 4px", fontSize:"11px", fontWeight:800, textTransform:"uppercase", color:D.muted }}>Reply they sent</p>
                     <p style={{ margin:0, fontSize:"13px", color:D.text, lineHeight:1.7, whiteSpace:"pre-wrap",
-                      fontFamily:"Georgia, 'Times New Roman', serif" }}>{h.reply || "—"}</p>
+                      fontFamily:SERIF }}>{h.reply || "—"}</p>
                     <div style={{ marginTop:"12px", textAlign:"right" }}>
                       <button onClick={(e) => { e.stopPropagation(); remove(h.id); }}
                         style={{ background:"none", border:`1.5px solid ${D.danger}60`, color:D.danger,
