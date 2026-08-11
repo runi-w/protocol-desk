@@ -627,7 +627,12 @@ const GC_CSS = `
 .gc-embed .gc-mark{display:none;}       /* CRM already shows the header */
 .gc-embed .gc-acct-wrap{display:none;}  /* sign-in is handled by CRM SSO */
 .gc-embed .gc-top{justify-content:center;border-bottom:1px solid var(--gc-border);}
-.gc-embed .gc-hero{padding-top:30px;}
+/* The CRM already provides the page header, so drop the desk's own brand line + oversized headline. */
+.gc-embed .gc-eyebrow{display:none;}
+.gc-embed .gc-h1{font-size:30px;line-height:1.15;margin-top:2px;}
+.gc-embed .gc-rule{margin:14px 0 20px;}
+.gc-embed .gc-hero{padding:20px 22px 28px;}
+.gc-embed .gc-help{margin-top:14px;}
 `;
 
 // ─── CATEGORY CONFIG ─────────────────────────────────────────────
