@@ -2434,9 +2434,22 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
   const [clar, setClar]   = useState({});     // Runi's explanation of flagged contradictions
   const [contra, setContra] = useState({});   // { [id]: { busy, list, summary, ran } }
   const [busyId, setBusyId] = useState("");
+  const [reviseBusy, setReviseBusy] = useState("");
   const [zoom, setZoom] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Rewrite the answer box using Runi's feedback (AI applies it; he can then tweak & approve).
+  const reviseWithFeedback = async (s) => {
+    const feedback = (notes[s.id] || "").trim();
+    if (!feedback) { alert("Write your feedback first, then rewrite."); return; }
+    if (reviseBusy === s.id) return;
+    setReviseBusy(s.id);
+    try {
+      const { response } = await aiCall("/ai/revise", { question: s.question, currentAnswer: (edits[ek(s)] || s.currentAnswer || s.draft || ""), feedback });
+      if (response) setEdits(e => ({ ...e, [ek(s)]: response }));
+    } catch (e) { alert("Couldn't rewrite — " + (e.message || e)); }
+    finally { setReviseBusy(""); }
+  };
   const checkContradictions = async (s) => {
     const finalAnswer = (edits[ek(s)] || "").trim();
     if (!finalAnswer) { alert("Write the final answer first, then check it."); return; }
@@ -2545,10 +2558,14 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
                 <p style={{ margin:"14px 0 5px", ...labelStyle, color:D.success }}>Answer — edit &amp; approve, or leave it and send back with feedback</p>
                 <textarea value={edits[ek(s)] || ""} onChange={e => setEdits({ ...edits, [ek(s)]: e.target.value })} rows={7} style={box} />
 
-                <p style={{ margin:"14px 0 5px", ...labelStyle }}>Feedback to the agent <span style={{ textTransform:"none", fontWeight:600, letterSpacing:0 }}>(teaches the AI on approve · required to send back)</span></p>
+                <p style={{ margin:"14px 0 5px", ...labelStyle }}>Feedback <span style={{ textTransform:"none", fontWeight:600, letterSpacing:0 }}>(what you like / don't like — rewrites the answer, teaches the AI, sent to the agent)</span></p>
                 <textarea value={notes[s.id] || ""} onChange={e => setNotes({ ...notes, [s.id]: e.target.value })} rows={2}
-                  placeholder="e.g. Never quote a delivery date before the fabric is confirmed — say we'll follow up with a date instead."
+                  placeholder="e.g. Warmer opening, offer the Lakewood tailor first, and don't promise a delivery date."
                   style={{ ...inputStyle, resize:"vertical", fontSize:"13.5px", lineHeight:1.7 }} />
+                <button onClick={() => reviseWithFeedback(s)} disabled={reviseBusy === s.id || !(notes[s.id] || "").trim()}
+                  style={{ marginTop:"9px", padding:"9px 16px", background:D.surface, color:D.accentDark, border:`1.5px solid ${D.accent}`, borderRadius:"9px", fontSize:"13px", fontWeight:700, cursor: (reviseBusy === s.id || !(notes[s.id] || "").trim()) ? "default" : "pointer", fontFamily:FONT }}>
+                  {reviseBusy === s.id ? "Rewriting…" : "✨ Rewrite the answer with my feedback"}
+                </button>
 
                 <div style={{ marginTop:"14px", background:D.surfaceSoft, border:`1px solid ${D.border}`, borderRadius:"11px", padding:"12px 14px" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:"10px", flexWrap:"wrap" }}>
