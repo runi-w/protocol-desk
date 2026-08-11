@@ -620,6 +620,14 @@ const GC_CSS = `
   .gc-foot button:last-child{border-bottom:none;}
   .gc-foot .gc-chev{display:block;margin-left:auto;color:var(--gc-muted);}
 }
+
+/* ── EMBED (inside the CRM) ── trim our own chrome so it reads as a native panel ── */
+.gc-embed .gc-page{padding:0;background:var(--gc-surface);}
+.gc-embed .gc-shell{border:none;border-radius:0;box-shadow:none;max-width:none;}
+.gc-embed .gc-mark{display:none;}       /* CRM already shows the header */
+.gc-embed .gc-acct-wrap{display:none;}  /* sign-in is handled by CRM SSO */
+.gc-embed .gc-top{justify-content:center;border-bottom:1px solid var(--gc-border);}
+.gc-embed .gc-hero{padding-top:30px;}
 `;
 
 // ─── CATEGORY CONFIG ─────────────────────────────────────────────
@@ -682,6 +690,11 @@ const STAFF_PASSCODE = "Gc1505123!";
 // Set this to the Railway URL once deployed, e.g. "https://protocol-desk-ai-production.up.railway.app".
 const AI_BACKEND_URL = "https://protocol-desk-ai-production.up.railway.app";
 const TEMPLATES_LIVE = true;   // Templates content approved & live (2026-07-19)
+// EMBED mode: when loaded as ?embed=1 inside the CRM, trim our own chrome and accept single sign-on
+// from the parent (a postMessage handshake, origin-verified) so there's no second passcode.
+const EMBED = (() => { try { return new URLSearchParams(window.location.search).get("embed") === "1"; } catch { return false; } })();
+// Only these parent origins may grant staff via the embed handshake (our own gcclothiers.net sites + local dev).
+const EMBED_ORIGIN_OK = (o) => /^https:\/\/([a-z0-9-]+\.)?gcclothiers\.net$/.test(o) || /^https?:\/\/localhost(:\d+)?$/.test(o);
 // Session credentials sent with backend calls (set by the app on login / staff unlock).
 const SESSION = { staff: false, agentUser: "", agentPass: "" };
 const aiCall = async (path, body, method = "POST") => {
@@ -1457,9 +1470,9 @@ const Home = ({ protocols, staff, agentUser, onAgentLogin, onLogout, onUnlock, o
           <button onClick={onOpenHistory}><IcoClock size={18} /> Response history {chev}</button>
           <button onClick={onOpenAgents}><IcoUsers size={18} /> Manage agents {chev}</button>
           <button onClick={onAddNew}><IcoPlus size={18} /> Add / edit protocols {chev}</button>
-          <button onClick={onLock}><IcoLock size={18} /> Admin — lock {chev}</button>
+          {!EMBED && <button onClick={onLock}><IcoLock size={18} /> Admin — lock {chev}</button>}
         </>
-      ) : (
+      ) : EMBED ? null : (
         <>
           {agentUser
             ? <button onClick={onLogout}><IcoUser size={18} /> {agentUser} — log out {chev}</button>
@@ -3190,6 +3203,7 @@ export default function App() {
         m.name = "viewport"; m.content = "width=device-width, initial-scale=1";
         document.head.appendChild(m);
       }
+      if (EMBED) document.documentElement.classList.add("gc-embed");
     } catch {}
     (async () => {
       let isStaff = false;
@@ -3224,6 +3238,25 @@ export default function App() {
       setLoaded(true);
       if (isStaff) { loadQuestions(); loadPending(); }
     })();
+  }, []);
+
+  // Embed single-sign-on: the CRM parent posts {type:"gcpd-auth", role:"staff"} from a trusted
+  // gcclothiers.net origin → unlock admin here, no second passcode. We announce readiness so the
+  // parent knows to send it. Origin is verified; a random site cannot grant access.
+  useEffect(() => {
+    if (!EMBED) return;
+    const onMsg = (e) => {
+      if (!EMBED_ORIGIN_OK(e.origin)) return;
+      const d = e.data || {};
+      if (d.type === "gcpd-auth" && d.role === "staff") {
+        setStaff(true); SESSION.staff = true;
+        try { window.storage.set("gc-staff", "1"); } catch {}
+        loadQuestions(); loadPending();
+      }
+    };
+    window.addEventListener("message", onMsg);
+    try { window.parent && window.parent.postMessage({ type: "gcpd-ready" }, "*"); } catch {}
+    return () => window.removeEventListener("message", onMsg);
   }, []);
 
   const save = async (list) => {
