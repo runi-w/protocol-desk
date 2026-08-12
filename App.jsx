@@ -1307,8 +1307,8 @@ const ProtocolForm = ({ initial, onSave, onCancel, isNew: isNewProp }) => {
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
       {/* sticky header */}
       <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface,
-        borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+        borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onCancel}
             style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"8px",
               padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted, fontWeight:600,
@@ -1327,7 +1327,7 @@ const ProtocolForm = ({ initial, onSave, onCancel, isNew: isNewProp }) => {
         </div>
       </div>
 
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"20px 16px 56px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 56px" }}>
         {error && (
           <div style={{ background:D.dangerBg, border:`1.5px solid ${D.danger}40`, borderRadius:"11px",
             padding:"11px 16px", marginBottom:"14px", fontSize:"13px", color:D.danger, fontWeight:600 }}>
@@ -1652,8 +1652,8 @@ const Detail = ({ p, onBack, onEdit, staff }) => {
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
       {/* Sticky header */}
       <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface,
-        borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"flex-start" }}>
+        borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"flex-start" }}>
           <button onClick={onBack}
             style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"8px",
               padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted, fontWeight:600,
@@ -1674,7 +1674,7 @@ const Detail = ({ p, onBack, onEdit, staff }) => {
         </div>
       </div>
 
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"18px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"18px 16px 48px" }}>
 
         {/* Status banner */}
         {p.escalate ? (
@@ -1811,8 +1811,8 @@ const Triage = ({ protocols, onPick, onClose }) => {
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
       {/* sticky header */}
       <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface,
-        borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+        borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={stack.length > 1 ? back : onClose}
             style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"8px",
               padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted, fontWeight:600,
@@ -1833,7 +1833,7 @@ const Triage = ({ protocols, onPick, onClose }) => {
         </div>
       </div>
 
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"28px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"28px 16px 48px" }}>
         <p style={{ margin:"0 0 18px", fontSize:"18px", fontWeight:800, color:D.text, lineHeight:1.4 }}>
           {node.q}
         </p>
@@ -1863,8 +1863,8 @@ const QuestionsView = ({ questions, onAnswer, onDismiss, onAddNew, onClose }) =>
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
       <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface,
-        borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+        borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onClose}
             style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"8px",
               padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted, fontWeight:600,
@@ -1875,7 +1875,7 @@ const QuestionsView = ({ questions, onAnswer, onDismiss, onAddNew, onClose }) =>
         </div>
       </div>
 
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"22px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"22px 16px 48px" }}>
         <p style={{ margin:"0 0 16px", fontSize:"13px", color:D.muted, lineHeight:1.6 }}>
           When an agent can&rsquo;t find an answer, they flag it and it lands here. Answer one and your reply goes
           straight back to that agent — and the AI learns from it for next time.
@@ -1963,14 +1963,14 @@ const AnswerQuestionView = ({ q, protocols = [], onSaved, onClose }) => {
 
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
-      <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"720px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+      <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "720px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onClose} style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"8px", padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted, fontWeight:600, flexShrink:0, fontFamily:FONT }}>← Back</button>
           <h2 style={{ margin:0, flex:1, fontSize:"17px", fontWeight:800, color:D.text }}>Answer this question</h2>
         </div>
       </div>
 
-      <div style={{ maxWidth:"720px", margin:"0 auto", padding:"20px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "720px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 48px" }}>
         <p style={{ margin:"0 0 14px", fontSize:"13px", color:D.muted, lineHeight:1.6 }}>
           Your answer goes straight back to {q.agentFullName || q.agent || "the agent"} — in their feed and by email — and the AI learns from it. No protocol is created.
         </p>
@@ -2116,8 +2116,8 @@ const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSu
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
       <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`,
-        padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+        padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onClose} style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`,
             borderRadius:"8px", padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted,
             fontWeight:600, flexShrink:0, fontFamily:FONT }}>← Home</button>
@@ -2129,7 +2129,7 @@ const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSu
         </div>
       </div>
 
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"20px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 48px" }}>
         <div style={{ background:D.surface, border:`2px solid ${D.accent}`, borderRadius:"14px", padding:"16px 18px", marginBottom:"14px",
           boxShadow:"0 4px 18px rgba(184,149,99,0.12)" }}>
           <p style={{ margin:"0 0 8px", fontSize:"12px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:D.accentDark }}>Paste the customer&rsquo;s message</p>
@@ -2376,15 +2376,15 @@ const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogo
 
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
-      <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+      <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onClose} style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"8px", padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted, fontWeight:600, flexShrink:0, fontFamily:FONT }}>← Home</button>
           <h2 style={{ margin:0, flex:1, fontSize:"17px", fontWeight:800, color:D.text }}>📨 Submit for approval</h2>
           <span style={{ fontSize:"12px", color:D.muted }}>{who}{agentUser ? <> · <button onClick={onLogout} style={{ background:"none", border:"none", color:D.accent, cursor:"pointer", fontSize:"12px", textDecoration:"underline", fontFamily:FONT, padding:0 }}>log out</button></> : null}</span>
         </div>
       </div>
 
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"20px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 48px" }}>
         <p style={{ margin:"0 0 14px", fontSize:"13px", color:D.muted, lineHeight:1.6 }}>
           Paste the customer&rsquo;s question, add any screenshots, and write a proposed answer. Runi reviews it and either approves it, edits it, or sends it back with notes for you to rewrite — the approved answer is what you send, and it teaches the AI for next time.
         </p>
@@ -2575,15 +2575,15 @@ const ApprovalsView = ({ protocols = [], onClose }) => {
 
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
-      <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"720px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+      <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "720px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onClose} style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"8px", padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted, fontWeight:600, flexShrink:0, fontFamily:FONT }}>← Home</button>
           <h2 style={{ margin:0, flex:1, fontSize:"17px", fontWeight:800, color:D.text }}>✅ Approvals{pending.length ? ` (${pending.length})` : ""}</h2>
           <button onClick={() => setShowResolved(v => !v)} style={{ background:"none", border:"none", color:D.accent, cursor:"pointer", fontSize:"12.5px", fontWeight:600, textDecoration:"underline", fontFamily:FONT }}>{showResolved ? "Hide resolved" : "Show resolved"}</button>
         </div>
       </div>
 
-      <div style={{ maxWidth:"720px", margin:"0 auto", padding:"20px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "720px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 48px" }}>
         {loading ? <p style={{ fontSize:"13px", color:D.muted }}>Loading…</p> : (
           <>
             {pending.length === 0 && <p style={{ fontSize:"14px", color:D.muted, textAlign:"center", padding:"30px 0" }}>🎉 Nothing waiting for approval.</p>}
@@ -2701,13 +2701,13 @@ const LessonsView = ({ onClose }) => {
   const del = async (id) => { if (!window.confirm("Remove this from what the AI has learned?")) return; setLessons(l => l.filter(x => x.id !== id)); try { await aiCall("/lessons/delete", { id }); } catch {} };
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
-      <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"720px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+      <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`, padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "720px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onClose} style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"8px", padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted, fontWeight:600, flexShrink:0, fontFamily:FONT }}>← Home</button>
           <h2 style={{ margin:0, flex:1, fontSize:"17px", fontWeight:800, color:D.text }}>🧠 Learned answers{lessons.length ? ` (${lessons.length})` : ""}</h2>
         </div>
       </div>
-      <div style={{ maxWidth:"720px", margin:"0 auto", padding:"20px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "720px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 48px" }}>
         <p style={{ margin:"0 0 16px", fontSize:"13px", color:D.muted, lineHeight:1.6 }}>
           Every answer you approve lands here. When an agent drafts a response, the AI pulls up the closest of these and follows your wording and judgment — so the more you approve, the more it sounds like you.
         </p>
@@ -2759,8 +2759,8 @@ const HistoryView = ({ onClose }) => {
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
       <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`,
-        padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+        padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onClose} style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`,
             borderRadius:"8px", padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted,
             fontWeight:600, flexShrink:0, fontFamily:FONT }}>← Home</button>
@@ -2768,7 +2768,7 @@ const HistoryView = ({ onClose }) => {
         </div>
       </div>
 
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"20px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 48px" }}>
         <p style={{ margin:"0 0 16px", fontSize:"13px", color:D.muted, lineHeight:1.6 }}>
           Every response your agents ran through the checker — with its score. Low scores are worth a look.
         </p>
@@ -2883,8 +2883,8 @@ const AgentsView = ({ onClose }) => {
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
       <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`,
-        padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+        padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onClose} style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`,
             borderRadius:"8px", padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted,
             fontWeight:600, flexShrink:0, fontFamily:FONT }}>← Home</button>
@@ -2892,7 +2892,7 @@ const AgentsView = ({ onClose }) => {
         </div>
       </div>
 
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"20px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 48px" }}>
         <div style={{ background:D.surface, border:`1.5px solid ${D.border}`, borderRadius:"14px", padding:"16px 18px", marginBottom:"18px" }}>
           <p style={{ margin:"0 0 12px", fontSize:"12px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:D.muted }}>Add an agent login <span style={{ textTransform:"none", fontWeight:600, letterSpacing:0 }}>— all fields required</span></p>
           <div style={{ display:"flex", gap:"10px", flexWrap:"wrap" }}>
@@ -2995,8 +2995,8 @@ const TemplatesView = ({ templates, staff, onEdit, onDelete, onAdd, onClose }) =
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
       <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`,
-        padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+        padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onClose} style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`,
             borderRadius:"8px", padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted,
             fontWeight:600, flexShrink:0, fontFamily:FONT }}>← Protocols</button>
@@ -3008,7 +3008,7 @@ const TemplatesView = ({ templates, staff, onEdit, onDelete, onAdd, onClose }) =
         </div>
       </div>
 
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"18px 16px 48px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"18px 16px 48px" }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…"
           style={{ width:"100%", padding:"13px 16px", fontSize:"14px", border:`1.5px solid ${D.border}`,
             borderRadius:"11px", outline:"none", background:D.surface, color:D.text, boxSizing:"border-box",
@@ -3062,8 +3062,8 @@ const TemplateForm = ({ initial, isNew, groups, onSave, onCancel }) => {
   return (
     <div style={{ minHeight:"100vh", background:D.background, fontFamily:FONT }}>
       <div style={{ position:"sticky", top:0, zIndex:20, background:D.surface, borderBottom:`1px solid ${D.border}`,
-        padding:"12px 16px", boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
-        <div style={{ maxWidth:"680px", margin:"0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
+        padding:"12px 16px", boxShadow: EMBED ? "none" : "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", display:"flex", gap:"12px", alignItems:"center" }}>
           <button onClick={onCancel} style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"8px",
             padding:"7px 12px", cursor:"pointer", fontSize:"13px", color:D.muted, fontWeight:600, flexShrink:0, fontFamily:FONT }}>← Cancel</button>
           <h2 style={{ margin:0, flex:1, fontSize:"17px", fontWeight:800, color:D.text }}>{isNew ? "New Template" : "Edit Template"}</h2>
@@ -3071,7 +3071,7 @@ const TemplateForm = ({ initial, isNew, groups, onSave, onCancel }) => {
             padding:"8px 20px", cursor:"pointer", fontSize:"13px", color:"#fff", fontWeight:700, flexShrink:0, fontFamily:FONT }}>{isNew ? "Add" : "Save"}</button>
         </div>
       </div>
-      <div style={{ maxWidth:"680px", margin:"0 auto", padding:"20px 16px 56px" }}>
+      <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 56px" }}>
         {err && <div style={{ background:D.dangerBg, border:`1.5px solid ${D.danger}40`, borderRadius:"11px",
           padding:"11px 16px", marginBottom:"14px", fontSize:"13px", color:D.danger, fontWeight:600 }}>{err}</div>}
         <Field label="Group"><input value={group} onChange={e => setGroup(e.target.value)} list="tpl-groups" placeholder="e.g. Garment Ready — by location" style={inputStyle} />
