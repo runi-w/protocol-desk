@@ -631,30 +631,47 @@ const GC_CSS = `
   .gc-foot .gc-chev{display:block;margin-left:auto;color:var(--gc-muted);}
 }
 
-/* ── EMBED (inside the CRM) ── trim our own chrome so it reads as a native panel ── */
-.gc-embed .gc-page{padding:0;background:var(--gc-surface);}
-.gc-embed .gc-shell{border:none;border-radius:0;box-shadow:none;max-width:none;}
-.gc-embed .gc-mark{display:none;}       /* CRM already shows the header */
-.gc-embed .gc-acct-wrap{display:none;}  /* sign-in is handled by CRM SSO */
-.gc-embed .gc-top{justify-content:center;border-bottom:1px solid var(--gc-border);}
-/* The CRM already provides the page header, so drop the desk's own brand line + oversized headline. */
-.gc-embed .gc-eyebrow{display:none;}
-.gc-embed .gc-h1{font-size:30px;line-height:1.15;margin-top:2px;}
-.gc-embed .gc-rule{margin:14px 0 20px;}
-.gc-embed .gc-hero{padding:20px 22px 28px;}
-.gc-embed .gc-help{margin-top:14px;}
-.gc-embed .gc-crest{display:none;}   /* drop the gold heraldic watermark in the slate theme */
-/* Match the CRM's slate theme + fonts (the .gc-* classes read these vars; inline styles read the D object, both switched for embed) */
+/* ── EMBED (inside the CRM) — match the CRM's slate theme, fonts, AND its tab layout ── */
+/* Colors + fonts: the .gc-* classes read these vars; inline styles read the D object (both switched for embed). */
 .gc-embed{
   --gc-bg:#F8FAFC; --gc-surface:#FFFFFF; --gc-surfaceSoft:#F1F5F9; --gc-text:#121821;
   --gc-muted:#5D6A7C; --gc-border:#DFE3EA; --gc-accent:#1B293F; --gc-accent-dark:#1B293F;
   --gc-serif:'Instrument Serif', ui-serif, Georgia, serif;
   --gc-sans:'Public Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
-.gc-embed .gc-h1{font-weight:400;}   /* Instrument Serif reads better at its regular weight */
-.gc-embed .gc-tab{border-radius:8px;}
-.gc-embed .gc-btn{border-radius:8px;}
-.gc-embed .gc-search input{border-radius:8px;}
+.gc-embed .gc-page{padding:0;background:var(--gc-surface);}
+.gc-embed .gc-shell{border:none;border-radius:0;box-shadow:none;max-width:none;}
+.gc-embed .gc-mark, .gc-embed .gc-acct-wrap, .gc-embed .gc-crest{display:none;}
+
+/* Top bar → a left-aligned tab strip like the CRM's shadcn Tabs (muted pill track, white active tab). */
+.gc-embed .gc-top{justify-content:flex-start;border-bottom:none;padding:18px 24px 0;}
+.gc-embed .gc-tabs{background:var(--gc-surfaceSoft);border-radius:9px;padding:4px;gap:2px;}
+.gc-embed .gc-tab{border:none;background:transparent;color:var(--gc-muted);border-radius:6px;padding:6px 14px;font-size:13px;font-weight:500;}
+.gc-embed .gc-tab.on{background:var(--gc-surface);color:var(--gc-text);box-shadow:0 1px 2px rgba(16,24,40,.1);}
+
+/* Hero → left-aligned admin panel. Drop the desk's own eyebrow/headline/divider (the CRM PageHeader titles the tab). */
+.gc-embed .gc-hero{text-align:left;padding:14px 24px 22px;}
+.gc-embed .gc-eyebrow, .gc-embed .gc-h1, .gc-embed .gc-rule{display:none;}
+.gc-embed .gc-search{max-width:none;margin:0;}
+.gc-embed .gc-search input{border-radius:8px;box-shadow:none;padding:11px 40px 11px 40px;font-size:14px;}
+.gc-embed .gc-search .gc-mag{left:13px;}
+.gc-embed .gc-cta{flex-direction:row;flex-wrap:wrap;max-width:none;margin:12px 0 0;justify-content:flex-start;gap:10px;}
+.gc-embed .gc-btn{flex:0 0 auto;padding:9px 16px;font-size:13.5px;border-radius:8px;box-shadow:none;}
+.gc-embed .gc-help{text-align:left;max-width:none;margin:12px 2px 0;font-size:13px;}
+
+/* Results/body left-aligned with the CRM's page padding. */
+.gc-embed .gc-body{padding:0 24px 22px;}
+.gc-embed .gc-body-inner{max-width:none;}
+
+/* Footer admin tools → a left-aligned toolbar of subtle buttons (no separators, hover = muted). */
+.gc-embed .gc-foot{justify-content:flex-start;flex-wrap:wrap;border-top:1px solid var(--gc-border);padding:12px 20px;margin-top:6px;gap:2px;background:transparent;}
+.gc-embed .gc-foot button{width:auto;border:none;padding:7px 11px;font-size:13px;font-weight:500;border-radius:8px;color:var(--gc-text);}
+.gc-embed .gc-foot button:hover{background:var(--gc-surfaceSoft);color:var(--gc-text);}
+.gc-embed .gc-foot .gc-chev{display:none;}
+.gc-embed .gc-badge{background:var(--gc-accent);color:#fff;}
+
+/* Inner views (Approvals/Submit/Detail…): flatten their sticky header so it reads as panel content, not a page. */
+.gc-embed .gc-h1{font-weight:400;}
 `;
 
 // ─── CATEGORY CONFIG ─────────────────────────────────────────────
