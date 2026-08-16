@@ -2029,7 +2029,7 @@ const AnswerQuestionView = ({ q, protocols = [], onSaved, onClose }) => {
   );
 };
 
-const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSubmitForApproval, onClose }) => {
+const CheckerView = ({ protocols, conv, onConv, newConvId, agentUser, staff, onAgentLogin, onLogout, onSubmitForApproval, onClose }) => {
   const loggedIn = !!agentUser || staff;
   const who = agentUser || (staff ? "Runi" : "");
 
@@ -2039,6 +2039,7 @@ const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSu
   const [draft, setDraft] = useState("");
   const [copied, setCopied] = useState(false);
   const [logged, setLogged] = useState(false);
+  const [committed, setCommitted] = useState(false); // has THIS draft been recorded as sent?
 
   // agent login form
   const [lu, setLu] = useState("");
@@ -2055,15 +2056,38 @@ const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSu
 
   const go = async () => {
     if (!message.trim() || busy) return;
-    setBusy(true); setResult(null); setDraft(""); setCopied(false); setLogged(false);
+    const prevDraft = draft;
+    // NOTE: no setResult(null) here. Keeping the routed protocol across turns is what makes it
+    // sticky, so a follow-up doesn't get re-classified from scratch.
+    setBusy(true); setDraft(""); setCopied(false); setLogged(false); setCommitted(false);
     try {
       const compact = protocols.map(p => ({ id: p.id, title: p.title, trigger: p.trigger }));
-      const { protocolId } = await aiCall("/ai/route", { message, protocols: compact });
-      const p = protocols.find(x => x.id === protocolId);
+      // Give the router the thread topic so an elliptical follow-up ("yes please") still routes.
+      const opener = (conv.turns.find(t => t.by === "customer") || {}).text || "";
+      const r = await aiCall("/ai/route", {
+        message, protocols: compact,
+        context: opener && opener !== message ? `Earlier in this thread the customer wrote: ${opener}` : "",
+      });
+      const routed  = protocols.find(x => x.id === r.protocolId);
+      const current = result && result.protocol;
+      // Switch only on a confident, DIFFERENT match. An empty routing result keeps the current
+      // protocol too: dropping the agent into "no matching protocol" on turn 4 of a working
+      // conversation is far worse than a slightly stale one.
+      let p = current;
+      if (routed && (!current || (routed.id !== current.id && (r.confidence == null || r.confidence >= 0.6)))) p = routed;
       if (!p) { setResult({ none: true }); return; }
-      const { response } = await aiCall("/ai/write", { message, approvedAnswer: p.approvedLanguage });
-      setResult({ protocol: p }); setDraft(response || "");
-    } catch (e) { alert("The AI is busy — please try again in a moment.\n" + (e.message || e)); }
+
+      const { response } = await aiCall("/ai/write", {
+        message,
+        approvedAnswer: p.approvedLanguage,
+        history: conv.turns.map(t => ({ role: t.by, text: t.text })),  // oldest first, excludes `message`
+      });
+      setResult({ protocol: p, switched: !!(current && p.id !== current.id) });
+      setDraft(response || "");
+    } catch (e) {
+      setDraft(prevDraft);   // don't leave the box empty after a failed retry
+      alert("The AI is busy — please try again in a moment.\n" + (e.message || e));
+    }
     finally { setBusy(false); }
   };
 
@@ -2072,11 +2096,45 @@ const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSu
     const done = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
     try { navigator.clipboard.writeText(text).then(done, () => { fallbackCopy(text); done(); }); }
     catch { fallbackCopy(text); done(); }
+    if (!text.trim()) return;
+
+    // THE RECORD IS WHAT WAS ACTUALLY SENT. `draft` is the textarea, so this captures the agent's
+    // edits, not the AI's original wording. Committed as one atomic customer+agent pair.
+    const at = Date.now();
+    const id = conv.id || newConvId();
+    let turns;
+    if (committed && conv.turns.length >= 2) {
+      // Re-copied after further edits: correct the reply we already recorded rather than
+      // appending a phantom second message.
+      turns = conv.turns.slice();
+      turns[turns.length - 1] = { by: "us", text, at };
+    } else {
+      turns = [...conv.turns, { by: "customer", text: message, at }, { by: "us", text, at }];
+      setCommitted(true);
+      setMessage("");   // the box is now ready for the customer's next message
+    }
+    onConv({ id, turns });
+
     if (!logged && result && result.protocol) {
       setLogged(true);
       aiCall("/history", { agent: who, situation: message, protocolId: result.protocol.id,
-        protocolTitle: result.protocol.title, reply: draft, verdict: "used" }).catch(() => {});
+        protocolTitle: result.protocol.title, reply: text, verdict: "used",
+        conversationId: id, turn: Math.floor(turns.length / 2) }).catch(() => {});
     }
+  };
+
+  // Runi sees the whole exchange on the approval screen, with no submissions schema change.
+  const transcriptText = (turns) => turns
+    .map(t => (t.by === "us" ? "We replied: " : "Customer: ") + t.text)
+    .join("\n\n");
+
+  const sendForApproval = (d) => {
+    const at = Date.now();
+    const id = conv.id || newConvId();
+    // This customer message is part of the thread even though the reply isn't written yet.
+    const turns = message.trim() ? [...conv.turns, { by: "customer", text: message, at }] : conv.turns;
+    if (turns !== conv.turns) onConv({ id, turns });
+    onSubmitForApproval(turns.length > 1 ? transcriptText(turns) : (message || ""), d, id);
   };
 
   const box = { ...inputStyle, resize:"vertical", fontSize:"14px", lineHeight:1.7 };
@@ -2130,23 +2188,34 @@ const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSu
       </div>
 
       <div style={{ maxWidth: EMBED ? "none" : "680px", margin: EMBED ? "0" : "0 auto", padding:"20px 16px 48px" }}>
+        {/* Without an explicit "start a new conversation" control there is no way to end a thread,
+            and the next unrelated customer would inherit this one's context. */}
+        <ConvLog turns={conv.turns} onNew={() => {
+          onConv({ id: "", turns: [] });
+          setResult(null); setDraft(""); setMessage(""); setCommitted(false);
+        }} />
+
         <div style={{ background:D.surface, border:`2px solid ${D.accent}`, borderRadius:"14px", padding:"16px 18px", marginBottom:"14px",
           boxShadow:"0 4px 18px rgba(184,149,99,0.12)" }}>
-          <p style={{ margin:"0 0 8px", fontSize:"12px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:D.accentDark }}>Paste the customer&rsquo;s message</p>
+          <p style={{ margin:"0 0 8px", fontSize:"12px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:D.accentDark }}>
+            {conv.turns.length ? "The customer’s next message" : "Paste the customer’s message"}
+          </p>
           <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4}
-            placeholder="e.g. Hi, I ordered a suit a few weeks ago for my son's wedding next month — any idea when it'll be ready?" style={box} />
+            placeholder={conv.turns.length
+              ? "Paste what they just wrote back…"
+              : "e.g. Hi, I ordered a suit a few weeks ago for my son's wedding next month — any idea when it'll be ready?"} style={box} />
           <button onClick={go} disabled={busy || !message.trim()}
             style={{ marginTop:"10px", padding:"12px 22px", background: busy ? D.surfaceSoft : D.accent,
               color: busy ? D.muted : "#fff", border:`1.5px solid ${D.accent}`, borderRadius:"10px",
               fontSize:"14px", fontWeight:700, cursor: busy ? "default" : "pointer", fontFamily:FONT }}>
-            {busy ? "Finding the answer & writing…" : "✨ Write a response"}
+            {busy ? "Finding the answer & writing…" : (conv.turns.length ? "✨ Write the next reply" : "✨ Write a response")}
           </button>
         </div>
 
         {result && result.none && (
           <div style={{ background:D.dangerBg, border:`1.5px solid ${D.danger}40`, borderRadius:"14px", padding:"16px 18px" }}>
             <p style={{ margin:"0 0 10px", fontSize:"13.5px", color:"#7f1d1d", fontWeight:600 }}>I couldn&rsquo;t find a matching protocol for this one.</p>
-            <button onClick={() => onSubmitForApproval(message, "")}
+            <button onClick={() => sendForApproval("")}
               style={{ padding:"9px 16px", background:D.accent, color:"#fff", border:"none", borderRadius:"9px",
                 fontSize:"13px", fontWeight:700, cursor:"pointer", fontFamily:FONT }}>📨 Write an answer & send to Runi for approval</button>
           </div>
@@ -2154,16 +2223,23 @@ const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSu
 
         {result && result.protocol && (
           <>
-            <div style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"14px", padding:"14px 18px", marginBottom:"14px" }}>
-              <p style={{ margin:"0 0 6px", fontSize:"11px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:D.muted }}>The customer&rsquo;s message</p>
-              <p style={{ margin:0, fontSize:"14px", color:D.text, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{message}</p>
-            </div>
+            {/* Goes blank once copyReply clears `message`; ConvLog carries the history from then on. */}
+            {message && (
+              <div style={{ background:D.surfaceSoft, border:`1.5px solid ${D.border}`, borderRadius:"14px", padding:"14px 18px", marginBottom:"14px" }}>
+                <p style={{ margin:"0 0 6px", fontSize:"11px", fontWeight:800, letterSpacing:"0.6px", textTransform:"uppercase", color:D.muted }}>The customer&rsquo;s message</p>
+                <p style={{ margin:0, fontSize:"14px", color:D.text, lineHeight:1.7, whiteSpace:"pre-wrap" }}>{message}</p>
+              </div>
+            )}
 
             <div style={{ background:D.successBg, border:`1.5px solid ${D.success}40`, borderRadius:"14px", overflow:"hidden", marginBottom:"14px" }}>
               <div style={{ padding:"12px 18px", background:D.success + "0D", borderBottom:`1px solid ${D.success}25`,
                 display:"flex", alignItems:"center", justifyContent:"space-between", gap:"8px", flexWrap:"wrap" }}>
                 <span style={{ fontSize:"11px", fontWeight:800, letterSpacing:"0.8px", textTransform:"uppercase", color:D.success }}>✍️ Suggested response</span>
-                <span style={{ fontSize:"11.5px", color:D.muted }}>based on: {result.protocol.title}</span>
+                <span style={{ fontSize:"11.5px", color:D.muted }}>
+                  based on: {result.protocol.title}
+                  {/* A silent mid-thread tone change reads as a bug, so say when the protocol moved. */}
+                  {result.switched && <span style={{ marginLeft:"7px", color:D.accentDark, fontWeight:700 }}>↻ protocol switched</span>}
+                </span>
               </div>
               <div style={{ padding:"14px 18px" }}>
                 <textarea value={draft} onChange={e => { setDraft(e.target.value); setLogged(false); }} rows={9}
@@ -2179,7 +2255,7 @@ const CheckerView = ({ protocols, agentUser, staff, onAgentLogin, onLogout, onSu
             </div>
 
             <div style={{ textAlign:"center" }}>
-              <button onClick={() => onSubmitForApproval(message, draft)}
+              <button onClick={() => sendForApproval(draft)}
                 style={{ background:"none", border:"none", color:D.muted, fontSize:"12.5px", fontWeight:600,
                   cursor:"pointer", fontFamily:FONT, textDecoration:"underline", textUnderlineOffset:"3px" }}>
                 Want Runi to review it? 📨 Send this for approval
@@ -2226,6 +2302,47 @@ const SUB_STATUS = {
 };
 const latestReturn = (s) => [...((s && s.thread) || [])].reverse().find(t => t.by === "runi" && t.action === "returned") || {};
 // Renders the full back-and-forth on a submission (agent answers + Runi's notes).
+// The agent<->CUSTOMER transcript. Deliberately separate from ThreadLog below, which renders the
+// agent<->RUNI approval thread: its guard hides a 1-turn thread (exactly the case that matters here)
+// and its labels are the approval actions. Never pass a submission.thread to this, or vice versa.
+const ConvLog = ({ turns, onNew }) => {
+  if (!turns || !turns.length) return null;
+  return (
+    <div style={{ background:D.surface, border:`1.5px solid ${D.border}`, borderRadius:"14px",
+      padding:"14px 16px", marginBottom:"14px" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+        marginBottom:"10px", gap:"10px", flexWrap:"wrap" }}>
+        <p style={{ margin:0, fontSize:"11px", fontWeight:800, letterSpacing:"0.6px",
+          textTransform:"uppercase", color:D.muted }}>
+          This conversation &middot; {turns.filter(t => t.by === "us").length} sent
+        </p>
+        {onNew && <button onClick={onNew} style={{ background:"none", border:"none", color:D.accent,
+          fontSize:"12px", fontWeight:600, cursor:"pointer", fontFamily:FONT,
+          textDecoration:"underline", textUnderlineOffset:"3px", padding:0 }}>
+          Start a new conversation
+        </button>}
+      </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+        {turns.map((t, i) => {
+          const us = t.by === "us";
+          return (
+            <div key={i} style={{ alignSelf: us ? "flex-end" : "flex-start", maxWidth:"88%",
+              background: us ? D.successBg : D.surfaceSoft,
+              border:`1px solid ${us ? D.success + "40" : D.border}`,
+              borderRadius:"12px", padding:"9px 12px" }}>
+              <p style={{ margin:"0 0 3px", fontSize:"10.5px", fontWeight:800,
+                color: us ? D.success : D.muted }}>
+                {us ? "We sent" : "Customer"} &middot; {timeAgo(t.at)}
+              </p>
+              <p style={{ margin:0, fontSize:"13px", color:D.text, lineHeight:1.65,
+                whiteSpace:"pre-wrap", fontFamily: us ? SERIF : FONT }}>{t.text}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 const ThreadLog = ({ thread }) => {
   if (!thread || thread.length <= 1) return null;
   return (
@@ -2272,7 +2389,8 @@ const AgentSignInCard = ({ title, sub, lu, lp, lErr, lBusy, setLu, setLp, setLEr
   </div>
 );
 
-const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogout, onClose }) => {
+const SubmitView = ({ protocols, conv, onConv, agentUser, staff, prefill, onAgentLogin, onLogout, onClose }) => {
+  const conversationId = (prefill && prefill.conversationId) || "";
   const loggedIn = !!agentUser || staff;
   const who = agentUser || (staff ? "Runi" : "");
   const [question, setQuestion] = useState((prefill && prefill.question) || "");
@@ -2325,7 +2443,7 @@ const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogo
     if (!question.trim() || !draft.trim() || sending) return;
     setSending(true);
     try {
-      await aiCall("/submissions", { question, draftAnswer: draft, images });
+      await aiCall("/submissions", { question, draftAnswer: draft, images, conversationId });
       setDone(true); setQuestion(""); setDraft(""); setImages([]);
       loadMine(); setTimeout(() => setDone(false), 5000);
     } catch (e) { alert("Couldn't submit — " + (e.message || e)); }
@@ -2365,6 +2483,16 @@ const SubmitView = ({ protocols, agentUser, staff, prefill, onAgentLogin, onLogo
     const t = regen[s.id] || s.approvedAnswer || "";
     const done2 = () => { setCopiedId(s.id); setTimeout(() => setCopiedId(""), 2000); };
     try { navigator.clipboard.writeText(t).then(done2, () => { fallbackCopy(t); done2(); }); } catch { fallbackCopy(t); done2(); }
+    // Capture at COPY, not at /submissions/approve: approving is not sending, and "Regenerate" can
+    // still change the text afterward. The id check stops a stale approval from landing in a
+    // different customer's thread days later.
+    if (!t.trim() || !conv || !s.conversationId || s.conversationId !== conv.id) return;
+    const last = conv.turns[conv.turns.length - 1];
+    // Copying twice replaces; a returned -> revised -> approved round trip yields ONE customer turn.
+    const turns = (last && last.by === "us")
+      ? [...conv.turns.slice(0, -1), { by: "us", text: t, at: Date.now() }]
+      : [...conv.turns, { by: "us", text: t, at: Date.now() }];
+    onConv({ id: conv.id, turns });
   };
 
   const box = { ...inputStyle, resize:"vertical", fontSize:"14px", lineHeight:1.7 };
@@ -3215,7 +3343,11 @@ export default function App() {
   const [approvalsOpen, setApprovalsOpen] = useState(false);
   const [lessonsOpen, setLessonsOpen] = useState(false);
   const [answerQ, setAnswerQ] = useState(null);   // flagged question being answered
-  const [submitPrefill, setSubmitPrefill] = useState(null);   // {question, draft} carried from the assistant
+  const [submitPrefill, setSubmitPrefill] = useState(null);   // {question, draft, conversationId} from the assistant
+  // The active agent<->CUSTOMER conversation. NOT submission.thread, which is the agent<->Runi
+  // approval thread. Lives here, not in CheckerView: CheckerView is a conditional early return
+  // below, so "← Home" and "send for approval" both unmount it and would discard the thread.
+  const [conv, setConv] = useState({ id: "", turns: [] });   // turns: [{by:"customer"|"us", text, at}]
   const [pendingCount, setPendingCount] = useState(0);
   const [agentUser, setAgentUser] = useState("");
   const [staff, setStaff]         = useState(false);
@@ -3251,6 +3383,15 @@ export default function App() {
         const ru = await window.storage.get("gc-agent-user");
         const rp = await window.storage.get("gc-agent-pass");
         if (ru?.value) { setAgentUser(ru.value); SESSION.agentUser = ru.value; SESSION.agentPass = rp?.value || ""; }
+      } catch {}
+      // Restore the in-flight customer conversation. Must sit ABOVE the protocols block, which
+      // early-returns. 12 hour TTL so yesterday's thread can't bleed into this morning's first
+      // customer and make the AI reply as if mid-conversation with someone else.
+      try {
+        const rc = await window.storage.get("gc-conv-v1");
+        const c = rc?.value ? JSON.parse(rc.value) : null;
+        if (c && Array.isArray(c.turns) && c.turns.length && Date.now() - (c.at || 0) < 12 * 3600 * 1000)
+          setConv({ id: c.id || "", turns: c.turns });
       } catch {}
       try {
         const rt = await window.storage.get("gc-templates-v1");
@@ -3297,6 +3438,13 @@ export default function App() {
     try { window.parent && window.parent.postMessage({ type: "gcpd-ready" }, "*"); } catch {}
     return () => window.removeEventListener("message", onMsg);
   }, []);
+
+  const newConvId = () => "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const saveConv = async (next) => {
+    const c = { id: next.id, turns: (next.turns || []).slice(-40) };
+    setConv(c);
+    try { await window.storage.set("gc-conv-v1", JSON.stringify({ ...c, at: Date.now() })); } catch {}
+  };
 
   const save = async (list) => {
     try { await window.storage.set("gc-protocols-v20", JSON.stringify(list)); } catch {}
@@ -3428,11 +3576,14 @@ export default function App() {
     return (
       <CheckerView
         protocols={protocols}
+        conv={conv}
+        onConv={saveConv}
+        newConvId={newConvId}
         agentUser={agentUser}
         staff={staff}
         onAgentLogin={agentLogin}
         onLogout={agentLogout}
-        onSubmitForApproval={(question, draft) => { setCheckerOpen(false); setSubmitPrefill({ question, draft }); setSubmitOpen(true); }}
+        onSubmitForApproval={(question, draft, conversationId) => { setCheckerOpen(false); setSubmitPrefill({ question, draft, conversationId }); setSubmitOpen(true); }}
         onClose={() => setCheckerOpen(false)}
       />
     );
@@ -3446,6 +3597,8 @@ export default function App() {
     return (
       <SubmitView
         protocols={protocols}
+        conv={conv}
+        onConv={saveConv}
         agentUser={agentUser}
         staff={staff}
         prefill={submitPrefill}
