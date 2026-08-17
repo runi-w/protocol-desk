@@ -2109,7 +2109,12 @@ const CheckerView = ({ protocols, conv, onConv, newConvId, agentUser, staff, onA
       turns = conv.turns.slice();
       turns[turns.length - 1] = { by: "us", text, at };
     } else {
-      turns = [...conv.turns, { by: "customer", text: message, at }, { by: "us", text, at }];
+      // sendForApproval may already have committed this exact customer message. Don't record it twice.
+      const last = conv.turns[conv.turns.length - 1];
+      const dupe = last && last.by === "customer" && last.text === message;
+      turns = dupe
+        ? [...conv.turns, { by: "us", text, at }]
+        : [...conv.turns, { by: "customer", text: message, at }, { by: "us", text, at }];
       setCommitted(true);
       setMessage("");   // the box is now ready for the customer's next message
     }
@@ -2124,9 +2129,16 @@ const CheckerView = ({ protocols, conv, onConv, newConvId, agentUser, staff, onA
   };
 
   // Runi sees the whole exchange on the approval screen, with no submissions schema change.
-  const transcriptText = (turns) => turns
-    .map(t => (t.by === "us" ? "We replied: " : "Customer: ") + t.text)
-    .join("\n\n");
+  // The server stores question.slice(0, 4000) — the FIRST 4000 chars. This text is oldest-first,
+  // so an unclamped long thread loses its TAIL, which is the newest customer message Runi is being
+  // asked about. Clamp from the tail here, under the server cap, with a visible marker.
+  const transcriptText = (turns) => {
+    const full = turns
+      .map(t => (t.by === "us" ? "We replied: " : "Customer: ") + t.text)
+      .join("\n\n");
+    if (full.length <= 3900) return full;
+    return "[…earlier messages omitted…]\n\n" + full.slice(-3900);
+  };
 
   const sendForApproval = (d) => {
     const at = Date.now();
@@ -2335,7 +2347,8 @@ const ConvLog = ({ turns, onNew }) => {
                 {us ? "We sent" : "Customer"} &middot; {timeAgo(t.at)}
               </p>
               <p style={{ margin:0, fontSize:"13px", color:D.text, lineHeight:1.65,
-                whiteSpace:"pre-wrap", fontFamily: us ? SERIF : FONT }}>{t.text}</p>
+                whiteSpace:"pre-wrap", overflowWrap:"anywhere", wordBreak:"break-word",
+                fontFamily: us ? SERIF : FONT }}>{t.text}</p>
             </div>
           );
         })}
@@ -2390,7 +2403,10 @@ const AgentSignInCard = ({ title, sub, lu, lp, lErr, lBusy, setLu, setLp, setLEr
 );
 
 const SubmitView = ({ protocols, conv, onConv, agentUser, staff, prefill, onAgentLogin, onLogout, onClose }) => {
-  const conversationId = (prefill && prefill.conversationId) || "";
+  // Must be state, not a const off `prefill`: SubmitView stays mounted after a successful submit,
+  // so without clearing it every later submission gets stamped with the FIRST conversation's id and
+  // copyApproved's same-thread guard would pass for a completely different customer.
+  const [conversationId, setConversationId] = useState((prefill && prefill.conversationId) || "");
   const loggedIn = !!agentUser || staff;
   const who = agentUser || (staff ? "Runi" : "");
   const [question, setQuestion] = useState((prefill && prefill.question) || "");
@@ -2444,7 +2460,7 @@ const SubmitView = ({ protocols, conv, onConv, agentUser, staff, prefill, onAgen
     setSending(true);
     try {
       await aiCall("/submissions", { question, draftAnswer: draft, images, conversationId });
-      setDone(true); setQuestion(""); setDraft(""); setImages([]);
+      setDone(true); setQuestion(""); setDraft(""); setImages([]); setConversationId("");
       loadMine(); setTimeout(() => setDone(false), 5000);
     } catch (e) { alert("Couldn't submit — " + (e.message || e)); }
     finally { setSending(false); }
@@ -2465,7 +2481,14 @@ const SubmitView = ({ protocols, conv, onConv, agentUser, staff, prefill, onAgen
   const redraftRevision = async (s) => {
     if (revAiBusy === s.id) return;
     setRevAiBusy(s.id);
-    try { const { response } = await aiCall("/ai/write", { message: s.question, approvedAnswer: "" }); setRevText(r => ({ ...r, [s.id]: response || "" })); }
+    try {
+      const { response } = await aiCall("/ai/revise", {
+        question: s.question,
+        currentAnswer: reviseVal(s),
+        feedback: latestReturn(s).feedback || "",
+      });
+      if (response) setRevText(r => ({ ...r, [s.id]: response }));
+    }
     catch (e) { alert("The AI is busy — try again in a moment.\n" + (e.message || e)); }
     finally { setRevAiBusy(""); }
   };
@@ -2474,7 +2497,17 @@ const SubmitView = ({ protocols, conv, onConv, agentUser, staff, prefill, onAgen
     if (regenBusy === s.id) return;
     setRegenBusy(s.id);
     try {
-      const { response } = await aiCall("/ai/write", { message: s.question, approvedAnswer: s.approvedAnswer });
+      // If this submission belongs to the live thread, replay it so the rewrite continues the
+      // conversation instead of re-greeting. conv.turns ends with the customer turn that
+      // sendForApproval committed, so that turn is the message and everything before it is history.
+      const mine = conv && s.conversationId && s.conversationId === conv.id && conv.turns.length;
+      const last = mine ? conv.turns[conv.turns.length - 1] : null;
+      const threaded = !!(last && last.by === "customer");
+      const { response } = await aiCall("/ai/write", {
+        message: threaded ? last.text : s.question,
+        approvedAnswer: s.approvedAnswer,
+        history: threaded ? conv.turns.slice(0, -1).map(t => ({ role: t.by, text: t.text })) : [],
+      });
       setRegen(r => ({ ...r, [s.id]: response || "" }));
     } catch (e) { alert("Couldn't rewrite — " + (e.message || e)); }
     finally { setRegenBusy(""); }
@@ -3446,6 +3479,21 @@ export default function App() {
     try { await window.storage.set("gc-conv-v1", JSON.stringify({ ...c, at: Date.now() })); } catch {}
   };
 
+  // The boot-time TTL only fires on reload. This tab stays open for days (and inside the CRM
+  // iframe may never remount), so re-check while mounted — otherwise "yesterday's thread can't
+  // bleed into this morning's customer" isn't actually true for the people who never reload.
+  useEffect(() => {
+    if (!conv.turns.length) return;
+    const check = () => {
+      const last = conv.turns[conv.turns.length - 1];
+      if (Date.now() - ((last && last.at) || 0) > 12 * 3600 * 1000) saveConv({ id: "", turns: [] });
+    };
+    const t = setInterval(check, 5 * 60 * 1000);
+    const onVis = () => { if (!document.hidden) check(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
+  }, [conv]);
+
   const save = async (list) => {
     try { await window.storage.set("gc-protocols-v20", JSON.stringify(list)); } catch {}
   };
@@ -3480,6 +3528,9 @@ export default function App() {
   const agentLogout = () => {
     setAgentUser(""); SESSION.agentUser = ""; SESSION.agentPass = "";
     try { window.storage.set("gc-agent-user", ""); window.storage.set("gc-agent-pass", ""); } catch {}
+    // Logout is the hand-off point on a shared showroom machine. Without this the next agent
+    // inherits the previous agent's in-flight customer thread and every /ai/write ships it as history.
+    saveConv({ id: "", turns: [] });
   };
   const unlockStaff = (code) => {
     if (code === STAFF_PASSCODE) { setStaff(true); SESSION.staff = true; try { window.storage.set("gc-staff", "1"); } catch {} loadQuestions(); loadPending(); return true; }
